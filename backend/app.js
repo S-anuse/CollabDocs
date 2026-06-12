@@ -1,11 +1,21 @@
 require('dotenv').config();
+
 const express = require('express') ;
 const app = express() ;
 const connectDB = require('./config/db') ;
+const authRoutes = require('./routes/authRoutes') ;
+const cookieParser = require('cookie-parser');
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use("/api/auth" , authRoutes) ;
 
 console.log("1");
 connectDB();
 console.log("2");
+
+
 
 app.get('/', (req, res) => {
     console.log("Hey");
