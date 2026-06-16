@@ -5,6 +5,7 @@ const versionSchema = mongoose.Schema({
         type : mongoose.Schema.Types.ObjectId ,
         ref : 'document'
     } ,
+    title : String ,
     content : String ,
 } , { timestamps: true }) ;
 

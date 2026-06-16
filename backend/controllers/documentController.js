@@ -1,4 +1,6 @@
 const documentModel = require('../models/document') ;
+const userModel = require('../models/user') ;
+const versionModel = require('../models/version') ;
 const shareddocumentModel = require('../models/shareddocument') ;
 require('dotenv').config();
 
@@ -39,10 +41,10 @@ const returndocument = async (req , res) => {
     try {
         let document = await documentModel.findOne({_id : req.params.id}) ;
         if(!document) return res.status(404).json({message : "Document does not exist"}) ;
-        if(document.ownerId == req.user.userid) return res.status(200).json(document) ;
+        if(document.ownerId.toString() == req.user.userid) return res.status(200).json(document) ;
         let sharedDocument = await shareddocumentModel.findOne({documentId : req.params.id , userId : req.user.userid}) ;
         if(!sharedDocument) return res.status(403).json({message : "User has no permission."}) ;
-        res.json({message : "Document Found" , document}) ;
+        return res.status(200).json({message : "Document Found",document})
     }
     catch(err) {
         return res.json(err.message) ;
@@ -65,6 +67,11 @@ const updatedocument = async (req , res) => {
         }
 
         if(canEdit) {
+            await versionModel.create({
+                documentId : req.params.id ,
+                title : document.title ,
+                content : document.content 
+            })
             document.title = req.body.title ;
             document.content = req.body.content ;
             await document.save() ;
@@ -88,6 +95,8 @@ const deletedocument = async (req , res) => {
 
         await shareddocumentModel.deleteMany({documentId : req.params.id}) ;
 
+        await versionModel.deleteMany({documentId : req.params.id})
+
         res.status(200).json({message : "Deleted Successfully"}) ;
 
     }
@@ -96,4 +105,111 @@ const deletedocument = async (req , res) => {
     }
 }
 
-module.exports = {documents , getdocuments , returndocument , updatedocument , deletedocument} ;
+
+const shareDocument = async (req , res) => {
+    const {documentId , email , permission} = req.body ;
+    try {
+        let document = await documentModel.findOne({_id : documentId}) ;
+        if(!document) return res.status(404).json({message:"Document not found"}) ;
+        if(document.ownerId.toString() != req.user.userid) return res.status(403).json({message : "Sorry ! you can not share this document"}) ;
+        let user = await userModel.findOne({email}) ;
+        if(!user) return res.status(404).json({message:"User not found"}) ;
+        let isAlready = await shareddocumentModel.findOne({documentId , userId : user._id}) ;
+        if(isAlready) await shareddocumentModel.findOneAndUpdate({documentId , userId : user._id} , {permission : permission}) ;
+        else {
+            if(req.user.userid != user._id.toString()) {
+                await shareddocumentModel.create({
+                    documentId ,
+                    userId : user._id ,
+                    permission 
+                }) ;
+            }
+            else return res.status(403).json({message: "You cannot share a document with yourself"})
+        }
+        return res.status(200).json({message : "Document shared successfully"}) ;
+    }
+    catch(err) {
+        return res.status(500).json({message: err.message}) ;
+    }
+}
+
+const sharedusers = async (req , res) =>{
+    try {
+        let document = await documentModel.findOne({_id : req.params.id}) ;
+        if(!document) return res.status(404).json({message : "No Document found"}) ;
+        if(document.ownerId.toString() != req.user.userid) return res.status(403).json({message : "Sorry you are not the owner"}) ;
+        let users = await shareddocumentModel.find({documentId : req.params.id}).populate('userId') ;
+        if(users.length == 0) return res.status(404).json({message : "This document is not shared with anyone"}) ;
+        let users_Array = users.map(ele => {
+            return {name : ele.userId.name , 
+                email : ele.userId.email ,
+                permission : ele.permission }
+        }) ;
+        return res.status(200).json(users_Array) ;
+    }
+    catch(err) {
+        return res.status(500).json({message: err.message}) ;
+    }
+}
+
+const removeaccess = async (req, res) => {
+    const {userId} = req.body ;
+    try {
+        let document = await documentModel.findOne({_id : req.params.id}) ;
+        if(!document) return res.status(404).json({message : "No Document found"}) ;
+        if(document.ownerId.toString() != req.user.userid) return res.status(403).json({message : "Sorry you are not the owner"}) ;
+        let sharedDocument = await shareddocumentModel.findOne({documentId : req.params.id , userId}) ;
+        if(!sharedDocument) return res.status(404).json({message : "This document is not shared with this user"}) ;
+        await shareddocumentModel.findOneAndDelete({documentId : req.params.id , userId}) ;
+        return res.status(200).json({message : "Access Removed successfully"}) ;
+    }
+    catch(err) {
+        return res.status(500).json({message: err.message}) ;
+    }
+}
+
+const versions = async (req , res) => {
+    try {
+        let canSee = false ;
+        const document = await documentModel.findOne({_id : req.params.id}) ;
+        if(!document) return res.status(404).json({message : "Document does not exist"}) ;
+
+        if(document.ownerId.toString() == req.user.userid) canSee = true ;
+
+        if(!canSee) {
+            let sharedDocument = await shareddocumentModel.findOne({documentId : req.params.id , userId : req.user.userid}) ;
+            if(!sharedDocument) return res.status(403).json({message : "User has no permission."}) ;
+            canSee = true ;
+        }
+
+        if(canSee) {
+            const versions = await versionModel.find({documentId : req.params.id}) ;
+            if(versions.length == 0) return res.status(404).json({message : "No record found for this document"}) ;
+            return res.status(200).json(versions) ;
+        }
+    }
+    catch(err) {
+        return res.status(500).json({message: err.message}) ;
+    }
+}
+
+const restoreversion = async (req , res) => {
+    const {versionId} = req.body ;
+    try {
+        let version = await versionModel.findOne({_id : versionId , documentId : req.params.id}) ;
+        if(!version) return res.status(404).json({message : "This version is not available "}) ;
+        let document = await documentModel.findOne({_id : req.params.id}) ;
+        if(!document) return res.status(404).json({message : "Document does not exist"}) ;
+        if(document.ownerId.toString() != req.user.userid) return res.status(403).json({message : "Sorry you are not the owner"}) ;
+        await versionModel.create({documentId : req.params.id , title : document.title , content : document.content }) ;
+        document.title = version.title ;
+        document.content = version.content ;
+        await document.save() ;
+        return res.status(200).json(document) ;
+    }
+    catch(err) {
+        return res.status(500).json({message: err.message}) ;
+    }
+}
+
+module.exports = {documents , getdocuments , returndocument , updatedocument , deletedocument , shareDocument , sharedusers , removeaccess , versions , restoreversion} ;
