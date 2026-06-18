@@ -41,7 +41,7 @@ const returndocument = async (req , res) => {
     try {
         let document = await documentModel.findOne({_id : req.params.id}) ;
         if(!document) return res.status(404).json({message : "Document does not exist"}) ;
-        if(document.ownerId.toString() == req.user.userid) return res.status(200).json(document) ;
+        if(document.ownerId.toString() == req.user.userid) return res.status(200).json({message : "Document Found" , document}) ;
         let sharedDocument = await shareddocumentModel.findOne({documentId : req.params.id , userId : req.user.userid}) ;
         if(!sharedDocument) return res.status(403).json({message : "User has no permission."}) ;
         return res.status(200).json({message : "Document Found",document})
