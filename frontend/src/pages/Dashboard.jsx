@@ -12,6 +12,14 @@ function Dashboard() {
   const [newTitle, setNewTitle] = useState("");
   const [search, setSearch] = useState("");
 
+  const stripHtml = (html) => {
+    return html
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    };
+
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
@@ -146,8 +154,8 @@ function Dashboard() {
               )
             }
           
-          <p className="text-gray-500">
-            {doc.content}
+          <p className="text-gray-500 line-clamp-2">
+            {stripHtml(doc.content).slice(0,120)}
           </p>
           <button  onClick={(e) => {
               e.stopPropagation();
