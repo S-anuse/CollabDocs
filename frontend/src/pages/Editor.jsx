@@ -16,6 +16,7 @@ import {
 import "../styles/editor.css";
 import socket from "../socket";
 import ShareModal from "../components/ShareModal";
+import VersionModal from "../components/VersionModal";
 
 function Editor() {
   const [document, setDocument] = useState(null);
@@ -23,6 +24,7 @@ function Editor() {
   const [content, setContent] = useState("");
   const [saveStatus, setSaveStatus] = useState("Saved");
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
   const timerRef = useRef(null);
   const isInitialLoad = useRef(true);
   const isRemoteUpdate = useRef(false);
@@ -70,23 +72,23 @@ function Editor() {
     }
   };
 
+  const fetchDocuments = async () => {
+    try {
+      const response = await api.get("/documents/" + id, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      setDocument(response.data.document);
+      setTitle(response.data.document.title);
+      setContent(response.data.document.content);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        const response = await api.get("/documents/" + id, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-
-        setDocument(response.data.document);
-        setTitle(response.data.document.title);
-        setContent(response.data.document.content);
-      } catch (err) {
-        console.log(err);
-      }
-    };
-
     if (accessToken) {
       fetchDocuments();
     }
@@ -186,6 +188,14 @@ function Editor() {
           >
             Share
           </button>
+          <button
+            onClick={() => {
+              console.log("Version History Showing");
+              setShowVersions(true);
+            }}
+          >
+            Version History
+          </button>
         </div>
       </div>
 
@@ -272,6 +282,13 @@ function Editor() {
       </div>
       {showShareModal && (
         <ShareModal documentId={id} onClose={() => setShowShareModal(false)} />
+      )}
+      {showVersions && (
+        <VersionModal
+          documentId={id}
+          onClose={() => setShowVersions(false)}
+          onRestore={fetchDocuments}
+        />
       )}
     </div>
   );
