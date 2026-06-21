@@ -15,12 +15,14 @@ import {
 } from "lucide-react";
 import "../styles/editor.css";
 import socket from "../socket";
+import ShareModal from "../components/ShareModal";
 
 function Editor() {
   const [document, setDocument] = useState(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [saveStatus, setSaveStatus] = useState("Saved");
+  const [showShareModal, setShowShareModal] = useState(false);
   const timerRef = useRef(null);
   const isInitialLoad = useRef(true);
   const isRemoteUpdate = useRef(false);
@@ -175,7 +177,13 @@ function Editor() {
             {saveStatus === "Saved" ? "✓ Saved" : saveStatus}
           </div>
 
-          <button className="bg-blue-500 text-white px-4 py-2 rounded-full">
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded-full"
+            onClick={() => {
+              console.log("Share clicked");
+              setShowShareModal(true);
+            }}
+          >
             Share
           </button>
         </div>
@@ -262,6 +270,9 @@ function Editor() {
           </div>
         </div>
       </div>
+      {showShareModal && (
+        <ShareModal documentId={id} onClose={() => setShowShareModal(false)} />
+      )}
     </div>
   );
 }
