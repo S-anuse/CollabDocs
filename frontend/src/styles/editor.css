@@ -21,3 +21,23 @@
   list-style: disc;
   padding-left: 2rem;
 }
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+.ProseMirror {
+  white-space: pre-wrap;
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+.ProseMirror-selectednode {
+  outline: 3px solid #2563eb;
+}

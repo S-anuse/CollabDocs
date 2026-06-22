@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
 import api from "../api/axios";
 import {
   Bold,
@@ -12,6 +13,7 @@ import {
   Heading2,
   Undo2,
   Redo2,
+  ImageIcon,
 } from "lucide-react";
 import "../styles/editor.css";
 import socket from "../socket";
@@ -28,11 +30,20 @@ function Editor() {
   const timerRef = useRef(null);
   const isInitialLoad = useRef(true);
   const isRemoteUpdate = useRef(false);
+  const fileInputRef = useRef(null);
   const { accessToken } = useContext(AuthContext);
   const { id } = useParams();
 
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      Image.extend({
+        selectable: true,
+      }).configure({
+        inline: false,
+        allowBase64: true,
+      }),
+    ],
     content: "",
     onUpdate: ({ editor }) => {
       if (isRemoteUpdate.current) {
@@ -70,6 +81,59 @@ function Editor() {
       console.log(err);
       setSaveStatus("Error");
     }
+  };
+
+  const uploadImage = async (file) => {
+    try {
+      const formData = new FormData();
+
+      formData.append("image", file);
+
+      const response = await api.post("/upload-image", formData, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      return response.data.imageUrl;
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const handleImageSelect = async (e) => {
+    console.log("Image selected");
+
+    const file = e.target.files[0];
+
+    console.log(file);
+
+    if (!file) return;
+
+    const imageUrl = await uploadImage(file);
+
+    console.log("Returned URL:", imageUrl);
+
+    if (!imageUrl) return;
+
+    editor
+      ?.chain()
+      .focus()
+      .insertContent([
+        {
+          type: "image",
+          attrs: {
+            src: imageUrl,
+          },
+        },
+        {
+          type: "paragraph",
+        },
+      ])
+      .run();
+
+    console.log("AFTER INSERT:");
+    console.log(editor.getHTML());
   };
 
   const fetchDocuments = async () => {
@@ -157,6 +221,14 @@ function Editor() {
   return (
     <div className="min-h-screen bg-[#f1f3f4]">
       {/* Top Bar */}
+
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleImageSelect}
+      />
 
       <div className="h-16 bg-white border-b flex items-center justify-between px-6">
         <div className="flex items-center gap-4">
@@ -254,6 +326,12 @@ function Editor() {
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
           >
             <List size={18} />
+          </button>
+          <button
+            className="p-2 rounded-md hover:bg-gray-200"
+            onClick={() => fileInputRef.current.click()}
+          >
+            <ImageIcon size={18} />
           </button>
           <div className="w-px h-6 bg-gray-300 mx-2" />
           <button
