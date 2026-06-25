@@ -18,30 +18,37 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Instead of a static array, check dynamically:
+const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "";
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  clientUrl,
+];
+
+const checkOrigin = (origin, callback) => {
+  // Allow requests with no origin (like mobile apps or curl)
+  if (!origin) {
+    return callback(null, true);
+  }
+  
+  const isAllowed = allowedOrigins.includes(origin) || origin.endsWith(".vercel.app");
+  if (isAllowed) {
+    callback(null, true);
+  } else {
+    callback(null, false); // Block in browser, do not throw a 500 error in backend
+  }
+};
+
 app.use(
   cors({
-    origin(origin, callback) {
-      const allowedOrigins = [
-        "http://localhost:5173",
-        process.env.CLIENT_URL, // evaluated on EACH request, not at startup
-      ];
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: checkOrigin,
     credentials: true,
   }),
 );
 
 const io = new Server(server, {
   cors: {
-    origin: (origin, callback) => {
-      const allowed = ["http://localhost:5173", process.env.CLIENT_URL];
-      if (!origin || allowed.includes(origin)) callback(null, true);
-      else callback(new Error("Not allowed by CORS"));
-    },
+    origin: checkOrigin,
     credentials: true,
   },
 });
