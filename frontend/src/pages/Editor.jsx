@@ -46,6 +46,8 @@ function Editor() {
     ],
     content: "",
     onUpdate: ({ editor }) => {
+      console.log("EDITOR UPDATED");
+      console.log(editor.getHTML());
       if (isRemoteUpdate.current) {
         isRemoteUpdate.current = false;
         return;
@@ -62,6 +64,8 @@ function Editor() {
   });
 
   const saveDocument = async () => {
+    console.log("SAVE DOCUMENT CALLED");
+    console.log(content);
     try {
       await api.put(
         "/documents/" + id,
@@ -132,8 +136,12 @@ function Editor() {
       ])
       .run();
 
+    // Force React state to update
+    const html = editor.getHTML();
+    setContent(html);
+
     console.log("AFTER INSERT:");
-    console.log(editor.getHTML());
+    console.log(html);
   };
 
   const fetchDocuments = async () => {
@@ -160,6 +168,9 @@ function Editor() {
 
   useEffect(() => {
     if (editor && document) {
+      console.log("SETTING CONTENT");
+      console.log(document.content);
+
       isRemoteUpdate.current = true;
       editor.commands.setContent(document.content);
     }
@@ -219,7 +230,12 @@ function Editor() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f1f3f4]">
+    <div
+      className="min-h-screen bg-gradient-to-br
+from-slate-100
+via-blue-50
+to-indigo-100"
+    >
       {/* Top Bar */}
 
       <input
@@ -230,13 +246,18 @@ function Editor() {
         onChange={handleImageSelect}
       />
 
-      <div className="h-16 bg-white border-b flex items-center justify-between px-6">
+      <div className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 border-b border-gray-200 shadow-md flex items-center justify-between px-8 h-20">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">📄</span>
-            <span className="text-xl font-semibold text-blue-600">
-              CollabDocs
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white text-2xl shadow-lg">
+              📄
+            </div>
+
+            <div>
+              <h1 className="text-xl font-bold text-gray-800">CollabDocs</h1>
+
+              <p className="text-xs text-gray-500">Collaborative Workspace</p>
+            </div>
           </div>
 
           <input
@@ -246,55 +267,57 @@ function Editor() {
           />
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="text-sm text-gray-500">
-            {saveStatus === "Saved" ? "✓ Saved" : saveStatus}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+
+            <span className="text-green-700 font-medium text-sm">
+              {saveStatus}
+            </span>
           </div>
 
           <button
-            className="bg-blue-500 text-white px-4 py-2 rounded-full"
-            onClick={() => {
-              console.log("Share clicked");
-              setShowShareModal(true);
-            }}
+            className="px-5 py-2 rounded-full bg-white border border-gray-300 hover:bg-gray-100 transition"
+            onClick={() => setShowVersions(true)}
           >
-            Share
+            🕒 Version History
           </button>
+
           <button
-            onClick={() => {
-              console.log("Version History Showing");
-              setShowVersions(true);
-            }}
+            className="px-5 py-2 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition"
+            onClick={() => setShowShareModal(true)}
           >
-            Version History
+            👥 Share
           </button>
         </div>
       </div>
 
       {/* Toolbar */}
 
-      <div className="bg-[#f1f3f4] px-6 py-3">
-        <div className="bg-white rounded-full shadow-sm px-4 py-2 flex gap-2 items-center mx-auto w-fit">
+      <div className="px-6 pt-6">
+        <div className="sticky top-24 z-40 mx-auto w-fit flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/90 backdrop-blur-xl border border-gray-200 shadow-2xl">
           <button
-            className={`p-2 rounded-md hover:bg-gray-200 ${
+            className={`p-3 rounded-xl transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 hover:scale-110 ${
               editor?.isActive("bold") ? "bg-blue-100 text-blue-600" : ""
             }`}
             onClick={() => editor?.chain().focus().toggleBold().run()}
           >
-            <Bold size={18} />
+            <Bold size={20} />
           </button>
+
           <button
-            className={`p-2 rounded-md hover:bg-gray-200 ${
+            className={`p-3 rounded-xl transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 hover:scale-110 ${
               editor?.isActive("italic") ? "bg-blue-100 text-blue-600" : ""
             }`}
             onClick={() => editor?.chain().focus().toggleItalic().run()}
           >
-            <Italic size={18} />
+            <Italic size={20} />
           </button>
 
-          <div className="w-px h-6 bg-gray-300 mx-2" />
+          <div className="w-px h-7 bg-gray-300 mx-1" />
+
           <button
-            className={`p-2 rounded-md hover:bg-gray-200 ${
+            className={`p-3 rounded-xl transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 hover:scale-110 ${
               editor?.isActive("heading", { level: 1 })
                 ? "bg-blue-100 text-blue-600"
                 : ""
@@ -303,10 +326,11 @@ function Editor() {
               editor?.chain().focus().toggleHeading({ level: 1 }).run()
             }
           >
-            <Heading1 size={18} />
+            <Heading1 size={20} />
           </button>
+
           <button
-            className={`p-2 rounded-md hover:bg-gray-200 ${
+            className={`p-3 rounded-xl transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 hover:scale-110 ${
               editor?.isActive("heading", { level: 2 })
                 ? "bg-blue-100 text-blue-600"
                 : ""
@@ -315,36 +339,41 @@ function Editor() {
               editor?.chain().focus().toggleHeading({ level: 2 }).run()
             }
           >
-            <Heading2 size={18} />
+            <Heading2 size={20} />
           </button>
 
-          <div className="w-px h-6 bg-gray-300 mx-2" />
+          <div className="w-px h-7 bg-gray-300 mx-1" />
+
           <button
-            className={`p-2 rounded-md hover:bg-gray-200 ${
+            className={`p-3 rounded-xl transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 hover:scale-110 ${
               editor?.isActive("bulletList") ? "bg-blue-100 text-blue-600" : ""
             }`}
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
           >
-            <List size={18} />
+            <List size={20} />
           </button>
+
           <button
-            className="p-2 rounded-md hover:bg-gray-200"
+            className="p-3 rounded-xl transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 hover:scale-110"
             onClick={() => fileInputRef.current.click()}
           >
-            <ImageIcon size={18} />
+            <ImageIcon size={20} />
           </button>
-          <div className="w-px h-6 bg-gray-300 mx-2" />
+
+          <div className="w-px h-7 bg-gray-300 mx-1" />
+
           <button
-            className="p-2 rounded-md hover:bg-gray-200"
+            className="p-3 rounded-xl transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 hover:scale-110"
             onClick={() => editor?.chain().focus().undo().run()}
           >
-            <Undo2 size={18} />
+            <Undo2 size={20} />
           </button>
+
           <button
-            className="p-2 rounded-md hover:bg-gray-200"
+            className="p-3 rounded-xl transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 hover:scale-110"
             onClick={() => editor?.chain().focus().redo().run()}
           >
-            <Redo2 size={18} />
+            <Redo2 size={20} />
           </button>
         </div>
 
