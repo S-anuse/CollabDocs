@@ -12,16 +12,27 @@ const authRoutes = require("./routes/authRoutes");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://collab-docs-peach.vercel.app",
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
-  }),
+  })
 );
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     credentials: true,
   },
 });
