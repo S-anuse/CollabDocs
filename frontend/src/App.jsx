@@ -4,12 +4,14 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard' 
 import Editor from './pages/Editor' 
 import ProtectedRoute from "./routes/ProtectedRoute";
+import { Navigate } from "react-router-dom";
 
 function App() {
 
   return (
     <div>
       <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />}/>
         <Route path="/register" element={<Register />}/>
         <Route path="/dashboard" element={<ProtectedRoute>
