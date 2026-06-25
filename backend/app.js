@@ -15,7 +15,7 @@ const cors = require("cors");
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://collab-docs-peach.vercel.app",
+  process.env.CLIENT_URL,
 ];
 
 app.use(
