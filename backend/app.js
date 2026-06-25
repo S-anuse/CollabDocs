@@ -5,6 +5,7 @@ require("dotenv").config();
 const express = require("express");
 
 const app = express();
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 
 const connectDB = require("./config/db");
@@ -27,7 +28,7 @@ app.use(
       }
     },
     credentials: true,
-  })
+  }),
 );
 
 const io = new Server(server, {
