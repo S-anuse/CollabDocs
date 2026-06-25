@@ -113,7 +113,7 @@ collabdocs/
 ### Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/collabdocs.git
+git clone https://github.com/S-anuse/CollabDocs.git
 cd collabdocs
 ```
 
