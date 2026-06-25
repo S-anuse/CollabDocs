@@ -13,14 +13,18 @@ const authRoutes = require("./routes/authRoutes");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  process.env.CLIENT_URL,
-];
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
+// Instead of a static array, check dynamically:
 app.use(
   cors({
     origin(origin, callback) {
+      const allowedOrigins = [
+        "http://localhost:5173",
+        process.env.CLIENT_URL, // evaluated on EACH request, not at startup
+      ];
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -33,7 +37,11 @@ app.use(
 
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      const allowed = ["http://localhost:5173", process.env.CLIENT_URL];
+      if (!origin || allowed.includes(origin)) callback(null, true);
+      else callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   },
 });
@@ -55,9 +63,6 @@ io.on("connection", (socket) => {
   });
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 
 console.log("1");
