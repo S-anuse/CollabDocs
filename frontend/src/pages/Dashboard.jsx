@@ -13,6 +13,7 @@ function Dashboard() {
   const [search, setSearch] = useState("");
 
   const stripHtml = (html) => {
+    if (!html || typeof html !== "string") return "";
     return html
       .replace(/<[^>]*>/g, " ")
       .replace(/&nbsp;/g, " ")
@@ -102,8 +103,8 @@ function Dashboard() {
     }
   };
 
-  const filteredDocuments = documents.filter((doc) =>
-    doc.title.toLowerCase().includes(search.toLowerCase()),
+  const filteredDocuments = (documents || []).filter((doc) =>
+    doc && typeof doc.title === "string" && doc.title.toLowerCase().includes(search.toLowerCase())
   );
 
     const getPermissionBadge = (perm) => {
@@ -185,7 +186,7 @@ function Dashboard() {
         </div>
   
         <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl p-8 border border-white">
-          {documents.length === 0 ? (
+          {(documents || []).length === 0 ? (
             <div className="text-center py-24">
               <div className="text-8xl mb-6">📄</div>
   
@@ -265,7 +266,7 @@ function Dashboard() {
   
                 <div className="mt-6 flex justify-between items-center">
                   <p className="text-gray-400 text-sm">
-                    Updated {new Date(doc.updatedAt).toLocaleDateString()}
+                    Updated {doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : "N/A"}
                   </p>
   
                   <div className="flex gap-3">
