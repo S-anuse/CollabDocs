@@ -53,20 +53,59 @@ const io = new Server(server, {
   },
 });
 
+const sendActiveUsers = async (documentId) => {
+  try {
+    const sockets = await io.in(documentId).fetchSockets();
+    const activeUsers = sockets
+      .map((s) => s.user)
+      .filter((u) => u);
+    io.to(documentId).emit("active-users", activeUsers);
+  } catch (err) {
+    console.log("Error sending active users:", err.message);
+  }
+};
+
 io.on("connection", (socket) => {
   console.log("User Connected:", socket.id);
 
-  socket.on("join-document", (documentId) => {
+  socket.on("join-document", (data) => {
+    // Support both old string format and new object format for safety
+    const documentId = typeof data === "string" ? data : data.documentId;
+    const user = typeof data === "string" ? null : data.user;
+
     socket.join(documentId);
+    socket.documentId = documentId;
+    if (user) {
+      socket.user = user;
+    }
     console.log(`Socket ${socket.id} joined document ${documentId}`);
+    
+    if (documentId) {
+      sendActiveUsers(documentId);
+    }
   });
 
   socket.on("send-changes", ({ documentId, content }) => {
     socket.broadcast.to(documentId).emit("receive-changes", content);
   });
 
+  socket.on("cursor-move", ({ documentId, selection }) => {
+    socket.broadcast.to(documentId).emit("cursor-moved", {
+      clientId: socket.id,
+      user: socket.user,
+      selection,
+    });
+  });
+
   socket.on("disconnect", () => {
     console.log("User Disconnected:", socket.id);
+    if (socket.documentId) {
+      sendActiveUsers(socket.documentId);
+      // Broadcast cursor removal
+      socket.broadcast.to(socket.documentId).emit("cursor-removed", {
+        clientId: socket.id,
+      });
+    }
   });
 });
 

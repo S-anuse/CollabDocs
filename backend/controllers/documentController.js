@@ -21,14 +21,25 @@ const documents = async (req, res) => {
 
 const getdocuments = async (req, res) => {
   try {
-    let ownDocuments = await documentModel.find({ ownerId: req.user.userid });
+    let ownDocuments = await documentModel.find({ ownerId: req.user.userid }).lean();
     let sharedDocuments = await shareddocumentModel
       .find({ userId: req.user.userid })
-      .populate("documentId");
-    const sharedDocsOnly = sharedDocuments.map((ele) => {
-      return ele.documentId;
-    });
-    const combinedDocumentId = [...ownDocuments, ...sharedDocsOnly];
+      .populate("documentId")
+      .lean();
+    
+    const ownDocsWithPerm = ownDocuments.map((doc) => ({
+      ...doc,
+      permission: "owner",
+    }));
+    
+    const sharedDocsWithPerm = sharedDocuments
+      .filter((ele) => ele.documentId)
+      .map((ele) => ({
+        ...ele.documentId,
+        permission: ele.permission,
+      }));
+      
+    const combinedDocumentId = [...ownDocsWithPerm, ...sharedDocsWithPerm];
     res
       .status(200)
       .json({ message: "Documents are found", combinedDocumentId });
@@ -43,16 +54,26 @@ const returndocument = async (req, res) => {
     if (!document)
       return res.status(404).json({ message: "Document does not exist" });
     if (document.ownerId.toString() == req.user.userid)
-      return res.status(200).json({ message: "Document Found", document });
+      return res
+        .status(200)
+        .json({ message: "Document Found", document, permission: "owner" });
     let sharedDocument = await shareddocumentModel.findOne({
       documentId: req.params.id,
       userId: req.user.userid,
     });
     if (!sharedDocument)
       return res.status(403).json({ message: "User has no permission." });
-    return res.status(200).json({ message: "Document Found", document });
+    return res
+      .status(200)
+      .json({
+        message: "Document Found",
+        document,
+        permission: sharedDocument.permission,
+      });
   } catch (err) {
-    return res.json(err.message);
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
