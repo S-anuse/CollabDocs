@@ -63,16 +63,31 @@ function VersionModal({ documentId, onClose, onRestore }) {
           </button>
         </div>
 
-        <p>Total versions: {versions.length}</p>
-        <div className="mt-4 max-h-72 overflow-y-auto">
+        <p className="text-sm text-gray-500 mt-2">Total session checkpoints: {versions.length}</p>
+        <div className="mt-4 max-h-72 overflow-y-auto space-y-2">
           {versions.map((version) => (
             <div
               key={version._id}
               onClick={() => setSelectedVersion(version)}
-              className="border rounded-lg p-3 mb-2 cursor-pointer hover:bg-gray-100"
+              className={`border rounded-xl p-3 cursor-pointer transition ${
+                selectedVersion?._id === version._id
+                  ? "border-blue-500 bg-blue-50 shadow-sm"
+                  : "hover:bg-gray-50 border-gray-200"
+              }`}
             >
-              <p>{version.title}</p>
-              <p>{new Date(version.createdAt).toLocaleString()}</p>
+              <div className="flex justify-between items-center">
+                <p className="font-semibold text-gray-800 text-sm">
+                  {version.title || "Untitled Document"}
+                </p>
+                <span className="text-xs text-gray-500">
+                  {new Date(version.updatedAt || version.createdAt).toLocaleString()}
+                </span>
+              </div>
+              {version.authorId && (
+                <p className="text-xs text-blue-600 mt-1 font-medium">
+                  ✏ Edited by {version.authorId.name || version.authorId.email}
+                </p>
+              )}
             </div>
           ))}
         </div>

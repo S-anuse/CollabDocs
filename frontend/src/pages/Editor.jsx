@@ -309,7 +309,7 @@ function Editor() {
 
     timerRef.current = setTimeout(() => {
       saveDocument();
-    }, 2000);
+    }, 3000);
 
     return () => clearTimeout(timerRef.current);
   }, [content, title]);

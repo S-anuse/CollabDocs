@@ -77,6 +77,8 @@ const returndocument = async (req, res) => {
   }
 };
 
+const SESSION_GAP_MS = 10 * 60 * 1000; // 10 minutes session window
+
 const updatedocument = async (req, res) => {
   try {
     let canEdit = false;
@@ -98,11 +100,35 @@ const updatedocument = async (req, res) => {
     }
 
     if (canEdit) {
-      await versionModel.create({
-        documentId: req.params.id,
-        title: document.title,
-        content: document.content,
-      });
+      const lastVersion = await versionModel
+        .findOne({ documentId: req.params.id })
+        .sort({ updatedAt: -1, createdAt: -1 });
+
+      const now = new Date();
+      const sameAuthor =
+        lastVersion &&
+        lastVersion.authorId &&
+        lastVersion.authorId.toString() === req.user.userid;
+      const lastTime = lastVersion
+        ? new Date(lastVersion.updatedAt || lastVersion.createdAt).getTime()
+        : 0;
+      const withinSession = lastVersion && now.getTime() - lastTime < SESSION_GAP_MS;
+
+      if (lastVersion && sameAuthor && withinSession) {
+        // Continue current editing session: update session timestamp without duplicating rows
+        lastVersion.updatedAt = now;
+        await lastVersion.save();
+      } else {
+        // New editing session (different user or >10 min pause): create a new version checkpoint snapshot
+        await versionModel.create({
+          documentId: req.params.id,
+          authorId: req.user.userid,
+          title: document.title,
+          content: document.content,
+          updatedAt: now,
+        });
+      }
+
       document.title = req.body.title;
       document.content = req.body.content;
       await document.save();
@@ -245,7 +271,10 @@ const versions = async (req, res) => {
     }
 
     if (canSee) {
-      const versions = await versionModel.find({ documentId: req.params.id });
+      const versions = await versionModel
+        .find({ documentId: req.params.id })
+        .populate("authorId", "name email")
+        .sort({ updatedAt: -1, createdAt: -1 });
       if (versions.length == 0)
         return res
           .status(404)
@@ -275,8 +304,10 @@ const restoreversion = async (req, res) => {
       return res.status(403).json({ message: "Sorry you are not the owner" });
     await versionModel.create({
       documentId: req.params.id,
+      authorId: req.user.userid,
       title: document.title,
       content: document.content,
+      updatedAt: new Date(),
     });
     document.title = version.title;
     document.content = version.content;
