@@ -100,6 +100,11 @@ const updatedocument = async (req, res) => {
     }
 
     if (canEdit) {
+      // Guard: If nothing changed, do not modify document or create version history entries
+      if (document.title === req.body.title && document.content === req.body.content) {
+        return res.json(document);
+      }
+
       const lastVersion = await versionModel
         .findOne({ documentId: req.params.id })
         .sort({ updatedAt: -1, createdAt: -1 });

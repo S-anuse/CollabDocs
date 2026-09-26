@@ -182,8 +182,10 @@ function Editor() {
 
   const saveDocument = async () => {
     console.log("SAVE DOCUMENT CALLED");
-    console.log(content);
     try {
+      // Save local draft snapshot to localStorage as offline safety backup
+      localStorage.setItem(`draft_doc_${id}`, JSON.stringify({ title, content, updatedAt: Date.now() }));
+
       await api.put(
         "/documents/" + id,
         {
@@ -197,10 +199,16 @@ function Editor() {
         },
       );
 
+      // Clean up local safety draft once cloud save succeeds
+      localStorage.removeItem(`draft_doc_${id}`);
       setSaveStatus("Saved");
     } catch (err) {
-      console.log(err);
-      setSaveStatus("Error");
+      console.log("Save error:", err);
+      if (!navigator.onLine) {
+        setSaveStatus("Offline (Saved locally)");
+      } else {
+        setSaveStatus("Error saving");
+      }
     }
   };
 
@@ -313,6 +321,21 @@ function Editor() {
 
     return () => clearTimeout(timerRef.current);
   }, [content, title]);
+
+  // Sync offline local drafts automatically when internet connection is restored
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log("Network restored! Syncing offline draft...");
+      const draft = localStorage.getItem(`draft_doc_${id}`);
+      if (draft) {
+        setSaveStatus("Syncing...");
+        saveDocument();
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [id, content, title]);
 
   useEffect(() => {
     if (!user || !permission) return;
