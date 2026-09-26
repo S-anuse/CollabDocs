@@ -26,19 +26,19 @@ const getdocuments = async (req, res) => {
       .find({ userId: req.user.userid })
       .populate("documentId")
       .lean();
-    
+
     const ownDocsWithPerm = ownDocuments.map((doc) => ({
       ...doc,
       permission: "owner",
     }));
-    
+
     const sharedDocsWithPerm = sharedDocuments
       .filter((ele) => ele.documentId)
       .map((ele) => ({
         ...ele.documentId,
         permission: ele.permission,
       }));
-      
+
     const combinedDocumentId = [...ownDocsWithPerm, ...sharedDocsWithPerm];
     res
       .status(200)
@@ -135,6 +135,8 @@ const updatedocument = async (req, res) => {
       } else if (withinSession && lastVersion) {
         // Active editing session (<10 min gap): update current active session version checkpoint
         lastVersion.updatedAt = now;
+        lastVersion.title = req.body.title;
+        lastVersion.content = req.body.content;
         lastVersion.authorId = req.user.userid;
         await lastVersion.save();
       } else {
