@@ -100,31 +100,45 @@ const updatedocument = async (req, res) => {
     }
 
     if (canEdit) {
-      // Guard: If nothing changed, do not modify document or create version history entries
-      if (document.title === req.body.title && document.content === req.body.content) {
+      const clean = (s) => (s || "").trim();
+
+      // Guard 1: If incoming payload is identical to current DB document, exit immediately
+      if (
+        clean(document.title) === clean(req.body.title) &&
+        clean(document.content) === clean(req.body.content)
+      ) {
         return res.json(document);
       }
+
+      // Guard 2: Check if a version with this EXACT title & content already exists anywhere in DB
+      const existingVersionWithSameContent = await versionModel.findOne({
+        documentId: req.params.id,
+        title: document.title,
+        content: document.content,
+      });
 
       const lastVersion = await versionModel
         .findOne({ documentId: req.params.id })
         .sort({ updatedAt: -1, createdAt: -1 });
 
       const now = new Date();
-      const sameAuthor =
-        lastVersion &&
-        lastVersion.authorId &&
-        lastVersion.authorId.toString() === req.user.userid;
       const lastTime = lastVersion
         ? new Date(lastVersion.updatedAt || lastVersion.createdAt).getTime()
         : 0;
       const withinSession = lastVersion && now.getTime() - lastTime < SESSION_GAP_MS;
 
-      if (lastVersion && sameAuthor && withinSession) {
-        // Continue current editing session: update session timestamp without duplicating rows
+      if (existingVersionWithSameContent) {
+        // Content already exists as an earlier version: update timestamp & author without creating a duplicate row
+        existingVersionWithSameContent.updatedAt = now;
+        existingVersionWithSameContent.authorId = req.user.userid;
+        await existingVersionWithSameContent.save();
+      } else if (withinSession && lastVersion) {
+        // Active editing session (<10 min gap): update current active session version checkpoint
         lastVersion.updatedAt = now;
+        lastVersion.authorId = req.user.userid;
         await lastVersion.save();
       } else {
-        // New editing session (different user or >10 min pause): create a new version checkpoint snapshot
+        // New session & unique content: create a new checkpoint snapshot
         await versionModel.create({
           documentId: req.params.id,
           authorId: req.user.userid,
@@ -276,14 +290,29 @@ const versions = async (req, res) => {
     }
 
     if (canSee) {
-      const versions = await versionModel
+      const rawVersions = await versionModel
         .find({ documentId: req.params.id })
         .populate("authorId", "name email")
         .sort({ updatedAt: -1, createdAt: -1 });
-      if (versions.length == 0)
+
+      if (rawVersions.length == 0)
         return res
           .status(404)
           .json({ message: "No record found for this document" });
+
+      // Deduplicate ALL versions so that every displayed version snapshot has UNIQUE content
+      const clean = (s) => (s || "").trim();
+      const versions = [];
+      const seenKeys = new Set();
+
+      for (const v of rawVersions) {
+        const key = `${clean(v.title)}::${clean(v.content)}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          versions.push(v);
+        }
+      }
+
       return res.status(200).json(versions);
     }
   } catch (err) {

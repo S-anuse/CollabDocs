@@ -134,6 +134,7 @@ function Editor() {
   const timerRef = useRef(null);
   const isInitialLoad = useRef(true);
   const isRemoteUpdate = useRef(false);
+  const isUserEditing = useRef(false);
   const fileInputRef = useRef(null);
   const { accessToken, user } = useContext(AuthContext);
   const { id } = useParams();
@@ -158,6 +159,7 @@ function Editor() {
         isRemoteUpdate.current = false;
         return;
       }
+      isUserEditing.current = true;
       const html = editor.getHTML();
 
       setContent(html);
@@ -306,8 +308,7 @@ function Editor() {
   useEffect(() => {
     if (!document) return;
 
-    if (isInitialLoad.current) {
-      isInitialLoad.current = false;
+    if (!isUserEditing.current) {
       return;
     }
 
@@ -316,6 +317,7 @@ function Editor() {
     clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(() => {
+      isUserEditing.current = false;
       saveDocument();
     }, 3000);
 
@@ -476,7 +478,10 @@ to-indigo-100"
           <div className="flex items-center gap-2">
             <input
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                isUserEditing.current = true;
+                setTitle(e.target.value);
+              }}
               disabled={permission === "viewer"}
               className="text-lg font-normal outline-none px-2 py-1 rounded hover:bg-gray-100 disabled:bg-transparent"
             />
